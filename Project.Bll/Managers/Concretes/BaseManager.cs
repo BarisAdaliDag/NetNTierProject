@@ -1,4 +1,6 @@
-﻿using Project.Bll.Managers.Abstracts;
+﻿using AutoMapper;
+using Project.Bll.Dtos;
+using Project.Bll.Managers.Abstracts;
 using Project.Dal.Repositories.Abstracts;
 using Project.Entities.Models;
 using System;
@@ -9,51 +11,63 @@ using System.Threading.Tasks;
 
 namespace Project.Bll.Managers.Concretes
 {
-    public abstract class BaseManager<T> : IManager<T> where T : BaseEntity
+    public abstract class BaseManager<T,U> : IManager<T,U> where T : class,IDto where U : BaseEntity
     {
-        private readonly IRepository<T> _repository;
+        private readonly IRepository<U> _repository;
+        protected readonly IMapper _mapper;
 
-        protected BaseManager(IRepository<T> repository)
+        protected BaseManager(IRepository<U> repository,IMapper mapper)
         {
             _repository = repository;
+            _mapper = mapper;
         }
 
         public async Task CreateAsync(T entity)
         {
-            entity.CreatedDate = DateTime.Now;
-            entity.Status = Entities.Enums.DataStatus.Inserted;
-            await _repository.CreateAsync(entity);
+            U domainEntity = _mapper.Map<U>(entity);
+
+            domainEntity.CreatedDate = DateTime.Now;
+            domainEntity.Status = Entities.Enums.DataStatus.Inserted;
+
+           
+            await _repository.CreateAsync(domainEntity);
         }
 
         public List<T> GetActives()
         {
-            return _repository.Where(x => x.Status != Entities.Enums.DataStatus.Deleted).ToList();
+            List<U> values = _repository.Where(x => x.Status != Entities.Enums.DataStatus.Deleted).ToList();
+
+            return _mapper.Map<List<T>>(values);
         }
 
         public async Task<List<T>> GetAllAsync()
         {
-            return await _repository.GetAllAsync();
+            List<U> values = await _repository.GetAllAsync();
+            return _mapper.Map<List<T>>(values);
         }
 
         public async Task<T> GetByIdAsync(int id)
         {
-            return await _repository.GetByIdAsync(id);
+            U value = await _repository.GetByIdAsync(id);
+            return _mapper.Map<T>(value);
         }
 
         public  List<T> GetPassives()
         {
-            return _repository.Where(x => x.Status == Entities.Enums.DataStatus.Deleted).ToList();
+            List<U> values = _repository.Where(x => x.Status == Entities.Enums.DataStatus.Deleted).ToList();
+            return _mapper.Map<List<T>>(values);
         }
 
         public List<T> GetUpdateds()
         {
-            return _repository.Where(x => x.Status == Entities.Enums.DataStatus.Updated).ToList();
+            List<U> values = _repository.Where(x => x.Status == Entities.Enums.DataStatus.Updated).ToList();
 
+            return _mapper.Map<List<T>>(values);
         }
 
         public async Task<string> HardDeleteAsync(int id)
         {
-            T originalValue = await _repository.GetByIdAsync(id);
+            U originalValue = await _repository.GetByIdAsync(id);
             if (originalValue == null || originalValue.Status != Entities.Enums.DataStatus.Deleted)
                  return "Sadece bulunabilen ve pasif veriler silinebilir";
             await _repository.DeleteAsync(originalValue);
@@ -63,7 +77,7 @@ namespace Project.Bll.Managers.Concretes
 
         public async Task<string> SoftDeleteAsync(int id)
         {
-            T originalValue = await _repository.GetByIdAsync(id);
+            U originalValue = await _repository.GetByIdAsync(id);
             if (originalValue == null || originalValue.Status == Entities.Enums.DataStatus.Deleted)
                 return "Veri ya zaten pasif ya da bulunamadı";
             originalValue.Status = Entities.Enums.DataStatus.Deleted;
@@ -77,10 +91,12 @@ namespace Project.Bll.Managers.Concretes
 
         public async Task UpdateAsync(T entity)
         {
-            T originalValue = await _repository.GetByIdAsync(entity.Id);
-            entity.UpdatedDate = DateTime.Now;
-            entity.Status = Entities.Enums.DataStatus.Updated;
-            await _repository.UpdateAsync(originalValue, entity);
+            U originalValue = await _repository.GetByIdAsync(entity.Id);
+
+            U newValue = _mapper.Map<U>(entity);
+            newValue.UpdatedDate = DateTime.Now;
+            newValue.Status = Entities.Enums.DataStatus.Updated;
+            await _repository.UpdateAsync(originalValue, newValue);
         }
     }
 }

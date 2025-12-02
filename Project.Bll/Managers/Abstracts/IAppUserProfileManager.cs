@@ -1,4 +1,5 @@
-﻿using Project.Entities.Models;
+﻿using Project.Bll.Dtos;
+using Project.Entities.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Project.Bll.Managers.Abstracts
 {
-    public interface IAppUserProfileManager : IManager<AppUserProfile>
+    public interface IAppUserProfileManager : IManager<AppUserProfileDto,AppUserProfile>
     {
     }
 }
