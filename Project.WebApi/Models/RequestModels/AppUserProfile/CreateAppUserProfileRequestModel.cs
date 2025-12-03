@@ -1,0 +1,9 @@
+﻿namespace Project.WebApi.Models.RequestModels.AppUserProfile
+{
+    public class CreateAppUserProfileRequestModel
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+    }
+}
