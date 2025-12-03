@@ -1,5 +1,8 @@
 ﻿using Project.Bll.DependencyResolvers;
 using Project.WebApi.MapperResolvers;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +18,8 @@ builder.Services.AddRepositoryService(); //Repository servisinin middleware'e ek
 builder.Services.AddManagerService(); //Manager servisinin middleware'e eklenmesi
 builder.Services.AddDtoMapperService(); //Dto mapper servisinin middleware'e eklenmesi
 builder.Services.AddVmMapperService(); //Vm Mapper servisinin middleware'e eklenmesi
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 var app = builder.Build();
 
