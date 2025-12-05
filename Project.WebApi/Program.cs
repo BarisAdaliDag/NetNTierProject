@@ -1,7 +1,8 @@
-﻿using Project.Bll.DependencyResolvers;
-using Project.WebApi.MapperResolvers;
-using FluentValidation;
+﻿using FluentValidation;
 using FluentValidation.AspNetCore;
+using Project.Bll.DependencyResolvers;
+using Project.WebApi.MapperResolvers;
+using Project.WebApi.Middleware;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
+
+
 builder.Services.AddDbContextService(); //Context class'ının middleware'e eklenmesi
 builder.Services.AddRepositoryService(); //Repository servisinin middleware'e eklenmesi
 builder.Services.AddManagerService(); //Manager servisinin middleware'e eklenmesi
@@ -22,6 +26,8 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 var app = builder.Build();
+//ÖNEMLİ: Exception middleware EN BAŞTA olmalı!
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

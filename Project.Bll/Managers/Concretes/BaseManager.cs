@@ -1,7 +1,10 @@
 ﻿using AutoMapper;
 using Project.Bll.Dtos;
+using Project.Bll.ErrorHandling;
+using Project.Bll.Exceptions;
 using Project.Bll.Managers.Abstracts;
 using Project.Dal.Repositories.Abstracts;
+using Project.Entities.Enums;
 using Project.Entities.Models;
 using System;
 using System.Collections.Generic;
@@ -24,79 +27,133 @@ namespace Project.Bll.Managers.Concretes
 
         public async Task CreateAsync(T entity)
         {
-            U domainEntity = _mapper.Map<U>(entity);
+            await ExceptionHandler.ExecuteAsync(async () => {
 
-            domainEntity.CreatedDate = DateTime.Now;
-            domainEntity.Status = Entities.Enums.DataStatus.Inserted;
+                U domainEntity = _mapper.Map<U>(entity);
+
+                domainEntity.CreatedDate = DateTime.Now;
+                domainEntity.Status = Entities.Enums.DataStatus.Inserted;
+
+
+                await _repository.CreateAsync(domainEntity);
+            } );
 
            
-            await _repository.CreateAsync(domainEntity);
         }
 
         public List<T> GetActives()
         {
-            List<U> values = _repository.Where(x => x.Status != Entities.Enums.DataStatus.Deleted).ToList();
+            return ExceptionHandler.Execute(() => {
+                List<U> values = _repository.Where(x => x.Status != Entities.Enums.DataStatus.Deleted).ToList();
 
-            return _mapper.Map<List<T>>(values);
+                return _mapper.Map<List<T>>(values);
+            });
+
+           
         }
 
         public async Task<List<T>> GetAllAsync()
         {
-            List<U> values = await _repository.GetAllAsync();
-            return _mapper.Map<List<T>>(values);
+            return await ExceptionHandler.ExecuteAsync(async () =>
+            {
+                List<U> values = await _repository.GetAllAsync();
+                return _mapper.Map<List<T>>(values);
+            });
+
         }
 
         public async Task<T> GetByIdAsync(int id)
         {
-            U value = await _repository.GetByIdAsync(id);
-            return _mapper.Map<T>(value);
+            return await ExceptionHandler.ExecuteAsync(async () =>
+            {
+                U value = await _repository.GetByIdAsync(id);
+
+                if (value == null)
+                    throw new NotFoundException($"{id} ID'li kayıt bulunamadı!");
+
+                return _mapper.Map<T>(value);
+            });
         }
 
         public  List<T> GetPassives()
         {
-            List<U> values = _repository.Where(x => x.Status == Entities.Enums.DataStatus.Deleted).ToList();
-            return _mapper.Map<List<T>>(values);
+            return ExceptionHandler.Execute(() =>
+            {
+                List<U> values = _repository.Where(x => x.Status == DataStatus.Deleted).ToList();
+                return _mapper.Map<List<T>>(values);
+            });
         }
 
         public List<T> GetUpdateds()
         {
-            List<U> values = _repository.Where(x => x.Status == Entities.Enums.DataStatus.Updated).ToList();
-
-            return _mapper.Map<List<T>>(values);
+            return ExceptionHandler.Execute(() =>
+            {
+                List<U> values = _repository.Where(x => x.Status == DataStatus.Updated).ToList();
+                return _mapper.Map<List<T>>(values);
+            });
         }
 
         public async Task<string> HardDeleteAsync(int id)
         {
-            U originalValue = await _repository.GetByIdAsync(id);
-            if (originalValue == null || originalValue.Status != Entities.Enums.DataStatus.Deleted)
-                 return "Sadece bulunabilen ve pasif veriler silinebilir";
-            await _repository.DeleteAsync(originalValue);
-            return $"{id} id'li veri silinmiştir";
-            
+            return await ExceptionHandler.ExecuteAsync(async () =>
+            {
+                U originalValue = await _repository.GetByIdAsync(id);
+
+                if (originalValue == null)
+                    throw new NotFoundException($"{id} ID'li kayıt bulunamadı!");
+
+                
+                if (originalValue.Status != DataStatus.Deleted)
+                    throw new BadRequestException("Sadece pasif durumda olan kayıtlar kalıcı olarak silinebilir!");
+
+                await _repository.DeleteAsync(originalValue);
+
+                return $"{id} id'li veri silinmistir";
+            });
+
         }
 
         public async Task<string> SoftDeleteAsync(int id)
         {
-            U originalValue = await _repository.GetByIdAsync(id);
-            if (originalValue == null || originalValue.Status == Entities.Enums.DataStatus.Deleted)
-                return "Veri ya zaten pasif ya da bulunamadı";
-            originalValue.Status = Entities.Enums.DataStatus.Deleted;
-            originalValue.DeletedDate = DateTime.Now;
-            await _repository.SaveChangesAsync();
-            return $"{id} id'li veri pasife cekilmiştir";
-            
+            return await ExceptionHandler.ExecuteAsync(async () =>
+            {
+                U originalValue = await _repository.GetByIdAsync(id);
 
-            
+                if (originalValue == null)
+                    throw new NotFoundException($"{id} ID'li kayıt bulunamadı!");
+
+                // Zaten silinmiş mi kontrolü
+                if (originalValue.Status == DataStatus.Deleted)
+                    throw new BadRequestException("Kayıt zaten pasif durumda!");
+
+                originalValue.Status = DataStatus.Deleted;
+                originalValue.DeletedDate = DateTime.Now;
+                await _repository.SaveChangesAsync();
+
+                return $"{id} id'li veri pasife cekiilmistir";
+            });
+
+
+
         }
 
         public async Task UpdateAsync(T entity)
         {
-            U originalValue = await _repository.GetByIdAsync(entity.Id);
+            await ExceptionHandler.ExecuteAsync(async () =>  
+            {
+                U originalValue = await _repository.GetByIdAsync(entity.Id);
 
-            U newValue = _mapper.Map<U>(entity);
-            newValue.UpdatedDate = DateTime.Now;
-            newValue.Status = Entities.Enums.DataStatus.Updated;
-            await _repository.UpdateAsync(originalValue, newValue);
+                if (originalValue == null)
+                    throw new NotFoundException($"{entity.Id} ID'li kayıt bulunamadı!");
+
+                // Silinmiş kayıt güncellenemez
+                if (originalValue.Status == DataStatus.Deleted)
+                    throw new BadRequestException("Pasif durumda olan kayıtlar güncellenemez!");
+                U newValue = _mapper.Map<U>(entity);
+                newValue.UpdatedDate = DateTime.Now;
+                newValue.Status = DataStatus.Updated;
+                await _repository.UpdateAsync(originalValue, newValue);
+            });
         }
     }
 }
