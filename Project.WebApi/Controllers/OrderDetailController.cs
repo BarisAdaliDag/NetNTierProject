@@ -45,18 +45,18 @@ namespace Project.WebApi.Controllers
             return Ok("Veri güncelleme başarılıdır");
         }
         //TODO :FIX later PUT AND DELETE
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> PacifyOrderDetail([FromRoute] int id)
-        //{
-        //    string message = await _orderDetailManager.SoftDeleteAsync(id);
-        //    return Ok(message);
-        //}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PacifyOrderDetail([FromRoute] int id)
+        {
+            string message = await _orderDetailManager.SoftDeleteAsync(id);
+            return Ok(message);
+        }
 
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> DeleteOrderDetail([FromRoute] int id)
-        //{
-        //    string message = await _orderDetailManager.HardDeleteAsync(id);
-        //    return Ok(message);
-        //}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteOrderDetail([FromRoute] int id)
+        {
+            string message = await _orderDetailManager.HardDeleteAsync(id);
+            return Ok(message);
+        }
     }
 }
